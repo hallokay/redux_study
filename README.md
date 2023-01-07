@@ -1,2 +1,2 @@
 # redux_study
-hghg
+리덕스 공부
