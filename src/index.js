@@ -4,9 +4,11 @@ import './index.css';
 import App from './App';
 import { store } from './store/store';
 import { Provider } from 'react-redux';
+import { fetchPosts } from "./features/posts/postsSlice";
 import { fetchUsers } from './features/users/usersSlice';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
+store.dispatch(fetchPosts());
 store.dispatch(fetchUsers());
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -22,5 +24,7 @@ root.render(
       </Router>
 
     </Provider>
-   </React.StrictMode>
+   </React.StrictMode>,
+  document.getElementById('root')
+
 );
