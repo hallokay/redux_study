@@ -1,14 +1,32 @@
-import { createSlice, nanoid, createAsyncThunk } from "@reduxjs/toolkit";
+import { 
+    createSlice, 
+    createAsyncThunk, 
+    createSelector,
+    createEntityAdapter //정규화
+} from "@reduxjs/toolkit";
 import { sub } from 'date-fns';
 import axios from "axios";
 
 const POSTS_URL = 'https://jsonplaceholder.typicode.com/posts';
-// state!
-const initialState = {
-    posts: [],
+// 정규화
+const postsAdapter = createEntityAdapter({
+    sertComparer: (a, b) => b.date.localeCompare(a.date)
+})
+//정규화시 state!
+const initialState =  postsAdapter.getInitialState({
+//     posts: [], 이거는 자동적으로 설정됨
     status: 'idle', //'idle' | 'loading' | 'succeeded' | 'failed'
-    error: null
-}
+    error: null,
+    count: 0
+})
+
+// state! 
+// const initialState = {
+//     posts: [],
+//     status: 'idle', //'idle' | 'loading' | 'succeeded' | 'failed'
+//     error: null,
+//     count: 0
+// }
 
 // async 로 fetch 하기 
 // 아래createAsyncThunk 에서 pending / fulfilled / rejected써줘서 try catch안씀
@@ -31,7 +49,8 @@ export const updatePost = createAsyncThunk('posts/updatePost', async(initialPost
         const response = await axios.put(`${POSTS_URL}/${id}`, initialPost);
         return response.data;
     } catch (err) {
-        return err.message;
+        // return err.message;
+        return initialPost; // test 할떄만! 
     }
 } )
 
@@ -52,37 +71,44 @@ const postSlice = createSlice({
     initialState,
     reducers: {
         // 게시물 추가
-        postAdded: {
-            reducer(state, action) {
-                state.posts.push(action.payload)
-            },
-            prepare(title, content, userId) {
-                return {
-                    payload: {
-                        id: nanoid(),
-                        title,
-                        content,
-                        date: new Date().toISOString(),
-                        userId,
-                        reactions: {
-                            thumbsUp: 0,
-                            wow: 0,
-                            heart: 0,
-                            rocket: 0,
-                            coffee: 0
-                        }
-                    }
-                }
-            }
-        },
+        // postAdded: {
+        //     reducer(state, action) {
+        //         state.posts.push(action.payload)
+        //     },
+        //     prepare(title, content, userId) {
+        //         return {
+        //             payload: {
+        //                 id: nanoid(),
+        //                 title,
+        //                 content,
+        //                 date: new Date().toISOString(),
+        //                 userId,
+        //                 reactions: {
+        //                     thumbsUp: 0,
+        //                     wow: 0,
+        //                     heart: 0,
+        //                     rocket: 0,
+        //                     coffee: 0
+        //                 }
+        //             }
+        //         }
+        //     }
+        // },
         reactionAdded(state, action) {
-            console.log('click');
-            const { postId, reaction } = action.payload
-            const existingPost = state.posts.find(post => post.id === postId)
-            if (existingPost) {
-                existingPost.reactions[reaction]++
-            }
+          // console.log('click');
+          const { postId, reaction } = action.payload;
+          //정규화
+          const existingPost = state.entities[postId]
+
+          // const existingPost = state.posts.find(post => post.id === postId)
+          if (existingPost) {
+            existingPost.reactions[reaction]++;
+          }
+        },
+        increseCount(state, action) {
+            state.count = state.count + 1 
         }
+
     },
     // 빌드할때 실행해주는거
     extraReducers(builder) {
@@ -110,7 +136,10 @@ const postSlice = createSlice({
             })
             // 이미 데이터가 있는 것들 불러와서 끼워넣기
             // Add any fetched posts to the array
-            state.posts = state.posts.concat(loadedPosts)
+            // state.posts = state.posts.concat(loadedPosts)
+        
+            //정규화
+            postsAdapter.upsertMany(state, loadedPosts);
         })
         .addCase(fetchPosts.rejected, (state, action) => {
             state.status = 'failed'
@@ -128,31 +157,53 @@ const postSlice = createSlice({
                 coffee: 0
           }
           console.log(action.payload);
-          state.posts.push(action.payload)
+        //   state.posts.push(action.payload)
+         //정규화
+         postsAdapter.addOne(state, action.payload)
         })
         .addCase(updatePost.fulfilled, (state, action) => {
             if(!action.payload?.id) {
                 return;
             }
-            const { id } = action.payload;
+            // const { id } = action.payload;
             action.payload.date = new Date().toISOString();
-            const posts = state.posts.filter(post => post.id !== id);
-            state.posts = [...posts, action.payload];
+            // const posts = state.posts.filter(post => post.id !== id);
+            // state.posts = [...posts, action.payload];
+            postsAdapter.upsertOne(state, action.payload);
+        })
+        .addCase(deletePost.fulfilled, (state, action) => {
+            if(!action.payload?.id) {
+                return;
+            }
+            const { id } = action.payload;
+            // const posts = state.posts.filter(post => post.id !== id);
+            // state.posts = posts;
+            postsAdapter.removeOne(state, id)
         })
  
     }
 })
 
+export const {
+    selectAll: selectAllPosts,
+    selectById: selectPostById,
+    selectIds: selectPostIds
+} = postsAdapter.getSelectors(state => state.posts)
 // 처음 모든 포스트를 다 보여주는거 
-export const allPosts = state => state.posts.posts;
+// export const selectAllPosts = (state) => state.posts.posts;
 export const getPostsStatus = state => state.posts.status;
 export const getPostsError = state => state.posts.error;
+export const getCount = state => state.posts.count;
 
 // 포스트 아이디로 게시물 찾기
-export const selectPostById = (state, postId) => {
-   return state.posts.posts.find((post) => post.id === postId);
-}
+// export const selectPostById = (state, postId) => {
+//    return state.posts.posts.find((post) => post.id === postId);
+// }
+// header에서 count를 누를때마다 리렌더되는데 userPage에서 전체 게시물 불러오기가 과부하옴
+// 이렇게 따로 불러와주면 헤더가 바뀌어도 과부하 안옴
+export const selectPostByUsers = createSelector([selectAllPosts, (state, userId) => userId],
+(posts, userId) => posts.filter(post => post.userId === userId))
 
 
-export const { postAdded, reactionAdded } = postSlice.actions;
+export const { increseCount, reactionAdded } = postSlice.actions;
 export default postSlice.reducer;

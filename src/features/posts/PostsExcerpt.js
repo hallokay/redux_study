@@ -2,8 +2,9 @@ import PostAuthor from "./PostAuthor";
 import TimeAgo from "./TimeAgo";
 import ReactionButtons from "./ReactionButtons";
 import { Link } from "react-router-dom";
+import React from "react";
 
-const PostsExcerpt = ({ post }) => {
+let PostsExcerpt = ({ post }) => {
   return (
     <article>
       <h2>{post.title}</h2>
@@ -17,4 +18,6 @@ const PostsExcerpt = ({ post }) => {
     </article>
   );
 };
+// post props가 바뀌지 않으면 리렌더되지 않음~
+PostsExcerpt = React.memo(PostsExcerpt);
 export default PostsExcerpt;

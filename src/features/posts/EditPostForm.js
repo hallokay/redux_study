@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPosts, selectPostById, updatePost } from './postsSlice';
+import { deletePost, fetchPosts, selectPostById, updatePost } from './postsSlice';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { selectAllusers } from '../users/usersSlice';
@@ -29,7 +29,7 @@ const EditPostForm = () => {
 
   const onTitleChanged = (e) => setTitle(e.target.value);
   const onContentChanged = (e) => setContent(e.target.value);
-  const onAuthorChanged = (e) => setUserId(e.target.value);
+  const onAuthorChanged = (e) => setUserId(Number(e.target.value));
 
   const canSave =
     [title, content, userId].every(Boolean) && requstStatus === "idle";
@@ -65,6 +65,22 @@ const EditPostForm = () => {
       {user.name}
     </option>
   ));
+
+  const onDeletePostClicked = () => {
+    try {
+      setRequestStatus('pending');
+      dispatch(deletePost({id: post.id})).unwrap()
+    
+      setTitle('');
+      setContent('');
+      setUserId('');
+      navigate('/')
+    } catch (err) {
+      console.log('삭제에 실패',err);
+    } finally {
+      setRequestStatus('idle');
+    }
+  }
   return (
     <section>
       <h2>Edit Post</h2>
@@ -95,6 +111,13 @@ const EditPostForm = () => {
         />
         <button type="button" onClick={onSavePostClicked} disabled={!canSave}>
           Save Post
+        </button>
+        <button
+          type="button"
+          className="deleteButton"
+          onClick={onDeletePostClicked}
+        >
+          Delete Post
         </button>
       </form>
     </section>
