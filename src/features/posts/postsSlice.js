@@ -185,8 +185,11 @@ const postSlice = createSlice({
 })
 
 export const {
+    // 모든 내용
     selectAll: selectAllPosts,
+    // 아이디로 찾기
     selectById: selectPostById,
+    // 모든 아이디 선택
     selectIds: selectPostIds
 } = postsAdapter.getSelectors(state => state.posts)
 // 처음 모든 포스트를 다 보여주는거 
@@ -204,6 +207,8 @@ export const getCount = state => state.posts.count;
 export const selectPostByUsers = createSelector([selectAllPosts, (state, userId) => userId],
 (posts, userId) => posts.filter(post => post.userId === userId))
 
+//이렇게 써도 무방dispatch시에는 dispatch(postsActions.increseCount())
+// export postsActions = postSlice.actions
 
 export const { increseCount, reactionAdded } = postSlice.actions;
 export default postSlice.reducer;
