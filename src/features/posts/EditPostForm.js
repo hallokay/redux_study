@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { deletePost, fetchPosts, selectPostById, updatePost } from './postsSlice';
+import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { selectAllusers } from '../users/usersSlice';
+// 여기에선 수정과 삭제가 일어난다
+import {
+  useUpdatePostMutation,
+  useDeletePostMutation,
+  selectPostById,
+} from "./postsSlice";
 
 const EditPostForm = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+
+  const [updatePost, { isLoading }] = useUpdatePostMutation();
+  const [deletePost] = useDeletePostMutation();
 
   const post = useSelector((state) => selectPostById(state, Number(postId)));
   const users = useSelector(selectAllusers);
@@ -16,7 +23,6 @@ const EditPostForm = () => {
   const [title, setTitle] = useState(post?.title);
   const [content, setContent] = useState(post?.body);
   const [userId, setUserId] = useState(post?.userId);
-  const [requstStatus, setRequestStatus] = useState("idle");
 
   // 게시물이 없을떄
   if (!post) {
@@ -32,21 +38,18 @@ const EditPostForm = () => {
   const onAuthorChanged = (e) => setUserId(Number(e.target.value));
 
   const canSave =
-    [title, content, userId].every(Boolean) && requstStatus === "idle";
+    [title, content, userId].every(Boolean) && !isLoading;
 
-  const onSavePostClicked = () => {
+  const onSavePostClicked = async() => {
     if (canSave) {
       try {
-        setRequestStatus("pending");
-        dispatch(
-          updatePost({
+          await updatePost({
             id: post.id,
             title,
             body: content,
             userId,
             reactions: post.reactions,
-          })
-        ).unwrap();
+          }).unwrap();
 
         setTitle("");
         setContent("");
@@ -54,9 +57,7 @@ const EditPostForm = () => {
         navigate(`/post/${postId}`);
       } catch (err) {
         console.error("실패했습니다", err);
-      } finally {
-        setRequestStatus("idle");
-      }
+      } 
     }
   };
 
@@ -66,10 +67,9 @@ const EditPostForm = () => {
     </option>
   ));
 
-  const onDeletePostClicked = () => {
+  const onDeletePostClicked = async() => {
     try {
-      setRequestStatus('pending');
-      dispatch(deletePost({id: post.id})).unwrap()
+      await deletePost({id: post.id}).unwrap()
     
       setTitle('');
       setContent('');
@@ -77,9 +77,7 @@ const EditPostForm = () => {
       navigate('/')
     } catch (err) {
       console.log('삭제에 실패',err);
-    } finally {
-      setRequestStatus('idle');
-    }
+    } 
   }
   return (
     <section>
